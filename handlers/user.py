@@ -1,51 +1,36 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
-from database import c, conn
+from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters
+from database import create_case, append_message, get_user_active_case
 from handlers.agent import notify_agents
-from config import AGENTS
-import random
 
 NAME, UID, EMAIL, PROBLEM = range(4)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    buttons = [
-        [InlineKeyboardButton("Create Ticket", callback_data="create_ticket")],
-        [InlineKeyboardButton("My Tickets", callback_data="my_tickets")]
-    ]
-    if update.message.from_user.id in AGENTS:
-        buttons.append([InlineKeyboardButton("Agent Panel", callback_data="agent_panel")])
-    markup = InlineKeyboardMarkup(buttons)
-    await update.message.reply_text("Welcome to Bifinance Customer Support. Use /help for instructions.", reply_markup=markup)
+    await update.message.reply_text(
+        "👋 Welcome to Bifinance Customer Support!\nUse /help for instructions."
+    )
 
-async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    user_id = query.from_user.id
+async def user_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    case_id = get_user_active_case(user_id)
+    if not case_id:
+        await update.message.reply_text("No active case. Use /start to create a ticket.")
+        return
 
-    if query.data == "create_ticket":
-        await query.message.reply_text("Enter your Name:")
-        return NAME
+    text = update.message.text or "Media sent"
+    append_message(case_id, "User", text)
 
-    elif query.data == "my_tickets":
-        c.execute("SELECT case_id, status FROM cases WHERE user_id=?", (user_id,))
-        tickets = c.fetchall()
-        if not tickets:
-            await query.message.reply_text("No tickets found.")
-            return
-        buttons = [[InlineKeyboardButton(f"{cid} - {status}", callback_data=f"ticket_{cid}")] for cid, status in tickets]
-        await query.message.reply_text("Your Tickets:", reply_markup=InlineKeyboardMarkup(buttons))
+    from handlers.agent import notify_assigned_agent
+    await notify_assigned_agent(context, case_id)
+    await update.message.reply_text("Your message has been sent to the agent.")
 
-    elif query.data.startswith("ticket_"):
-        case_id = query.data.split("_")[1]
-        c.execute("SELECT problem, status FROM cases WHERE case_id=?", (case_id,))
-        row = c.fetchone()
-        if row:
-            prob, status = row
-            await query.message.reply_text(f"Case ID: {case_id}\nStatus: {status}\nProblem: {prob}")
+async def create_ticket_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Enter your Name:")
+    return NAME
 
 async def name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
-    await update.message.reply_text("Enter your UID (or type skip):")
+    await update.message.reply_text("Enter your UID (or skip):")
     return UID
 
 async def uid(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,21 +49,15 @@ async def email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return PROBLEM
 
 async def problem(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text or "Media sent"
-    case_id = f"BF-{random.randint(100000,999999)}"
+    text = update.message.text
     user_id = update.message.from_user.id
-    name_val = context.user_data["name"]
-    uid_val = context.user_data["uid"]
-    email_val = context.user_data["email"]
+    name = context.user_data["name"]
+    uid = context.user_data["uid"]
+    email = context.user_data["email"]
 
-    c.execute(
-        "INSERT INTO cases (case_id, user_id, name, uid, email, problem, status, conversation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (case_id, user_id, name_val, uid_val, email_val, text, "OPEN", text)
-    )
-    conn.commit()
-
+    case_id = create_case(user_id, name, uid, email, text)
     await update.message.reply_text(f"Ticket created! Case ID: {case_id}")
 
-    await notify_agents(context, case_id, name_val)
-
+    # Notify all agents
+    await notify_agents(context, case_id, name)
     return ConversationHandler.END
