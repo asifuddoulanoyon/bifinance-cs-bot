@@ -1,54 +1,28 @@
 import os
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ConversationHandler, MessageHandler, filters
-from handlers.user import start, user_button, name, uid, email, problem, NAME, UID, EMAIL, PROBLEM
-from handlers.agent import show_agent_panel, agent_button
-from config import BOT_TOKEN, WEBHOOK_URL, BOT_OWNER_ID, AGENTS
+from telegram.ext import ApplicationBuilder, CommandHandler, ConversationHandler, MessageHandler, filters
+from handlers.user import start, user_message, create_ticket_start, NAME, UID, EMAIL, PROBLEM, name, uid, email, problem
+
+from config import BOT_TOKEN, WEBHOOK_URL, BOT_OWNER_ID
 
 PORT = int(os.environ.get("PORT", 10000))
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 conv_handler = ConversationHandler(
-    entry_points=[CallbackQueryHandler(user_button, pattern="^create_ticket$")],
+    entry_points=[CommandHandler("start", create_ticket_start)],
     states={
         NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, name)],
         UID: [MessageHandler(filters.TEXT & ~filters.COMMAND, uid)],
         EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, email)],
-        PROBLEM: [MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION | filters.Document.ALL, problem)]
+        PROBLEM: [MessageHandler(filters.TEXT & ~filters.COMMAND, problem)]
     },
     fallbacks=[]
 )
 
 app.add_handler(conv_handler)
-app.add_handler(CallbackQueryHandler(user_button, pattern="^(my_tickets|ticket_|agent_panel|rate_)"))
-app.add_handler(CallbackQueryHandler(agent_button, pattern="^(case_|transfer_|close)"))
+app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.Document.ALL, user_message))
 app.add_handler(CommandHandler("start", start))
 
-# Admin commands
-async def add_agent(update, context):
-    if update.message.from_user.id != BOT_OWNER_ID:
-        await update.message.reply_text("Not authorized")
-        return
-    if not context.args:
-        await update.message.reply_text("Usage: /addagent <user_id>")
-        return
-    AGENTS.append(int(context.args[0]))
-    await update.message.reply_text(f"Added agent {context.args[0]}")
-
-async def remove_agent(update, context):
-    if update.message.from_user.id != BOT_OWNER_ID:
-        await update.message.reply_text("Not authorized")
-        return
-    if not context.args:
-        await update.message.reply_text("Usage: /removeagent <user_id>")
-        return
-    AGENTS.remove(int(context.args[0]))
-    await update.message.reply_text(f"Removed agent {context.args[0]}")
-
-app.add_handler(CommandHandler("addagent", add_agent))
-app.add_handler(CommandHandler("removeagent", remove_agent))
-
-# Run webhook for Render
 app.run_webhook(
     listen="0.0.0.0",
     port=PORT,
