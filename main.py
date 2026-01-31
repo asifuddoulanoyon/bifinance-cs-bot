@@ -13,7 +13,7 @@ PORT = int(os.environ.get("PORT", 10000))
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# User conversation handler
+# User conversation
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
@@ -26,13 +26,11 @@ conv_handler = ConversationHandler(
 )
 app.add_handler(conv_handler)
 
-# User buttons
+# CallbackQueryHandlers
 app.add_handler(CallbackQueryHandler(user_button, pattern="^(create_ticket|my_tickets|ticket_|agent_panel|rate_)"))
-
-# Agent buttons
 app.add_handler(CallbackQueryHandler(agent_button, pattern="^(case_|transfer_|close)"))
 
-# Owner agent management
+# Owner agent management commands
 async def add_agent(update, context):
     if update.message.from_user.id != BOT_OWNER_ID:
         await update.message.reply_text("❌ Only owner can add agents.")
