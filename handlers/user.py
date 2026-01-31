@@ -27,7 +27,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "create_ticket":
         await query.message.reply_text("Enter your *Name*:", parse_mode="Markdown")
-        return NAME
+        return NAME  # Start ConversationHandler here
 
     elif query.data == "my_tickets":
         c.execute("SELECT case_id, status FROM cases WHERE user_id=?", (user_id,))
@@ -61,7 +61,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"Thank you! You rated {rating}⭐")
         return ConversationHandler.END
 
-# User conversation steps
+# ConversationHandler steps
 async def name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
     await update.message.reply_text("Enter your UID (or type skip):")
@@ -98,6 +98,7 @@ async def problem(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"✅ Ticket created! Case ID: {case_id}")
 
+    # Notify agents
     for agent_id in AGENTS:
         try:
             await context.bot.send_message(agent_id, f"📌 New ticket: {case_id}\nUser: {name_val}")
