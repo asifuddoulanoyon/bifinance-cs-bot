@@ -1,6 +1,6 @@
 import os
 
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Set this in Render
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Your Render service URL
 BOT_OWNER_ID = 1675295056
-AGENTS = [BOT_OWNER_ID]  # owner is automatically agent
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+AGENTS = []  # Add agent IDs here or via /addagent command
