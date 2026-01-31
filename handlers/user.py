@@ -7,6 +7,7 @@ from config import BOT_OWNER_ID, AGENTS
 
 NAME, UID, EMAIL, PROBLEM = range(4)
 
+# /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     buttons = [
         [InlineKeyboardButton("Create Ticket", callback_data="create_ticket")],
@@ -15,10 +16,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if user_id in AGENTS:
         buttons.append([InlineKeyboardButton("Agent Panel", callback_data="agent_panel")])
-
     markup = InlineKeyboardMarkup(buttons)
     await update.message.reply_text("👋 Welcome! What do you want to do?", reply_markup=markup)
 
+# CallbackQuery handler for user buttons
 async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -60,6 +61,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"Thank you! You rated {rating}⭐")
         return ConversationHandler.END
 
+# User conversation steps
 async def name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
     await update.message.reply_text("Enter your UID (or type skip):")
