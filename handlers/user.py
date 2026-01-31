@@ -1,8 +1,8 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
 from database import c, conn
-from handlers.agent import show_agent_panel
-from config import BOT_OWNER_ID, AGENTS
+from handlers.agent import notify_agents
+from config import AGENTS
 import random
 
 NAME, UID, EMAIL, PROBLEM = range(4)
@@ -12,14 +12,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Create Ticket", callback_data="create_ticket")],
         [InlineKeyboardButton("My Tickets", callback_data="my_tickets")]
     ]
-    user_id = update.message.from_user.id
-    if user_id in AGENTS:
+    if update.message.from_user.id in AGENTS:
         buttons.append([InlineKeyboardButton("Agent Panel", callback_data="agent_panel")])
     markup = InlineKeyboardMarkup(buttons)
-    await update.message.reply_text(
-        "Welcome to Bifinance Customer Support. Use /help for instructions.",
-        reply_markup=markup
-    )
+    await update.message.reply_text("Welcome to Bifinance Customer Support. Use /help for instructions.", reply_markup=markup)
 
 async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -34,7 +30,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         c.execute("SELECT case_id, status FROM cases WHERE user_id=?", (user_id,))
         tickets = c.fetchall()
         if not tickets:
-            await query.message.reply_text("You have no tickets yet.")
+            await query.message.reply_text("No tickets found.")
             return
         buttons = [[InlineKeyboardButton(f"{cid} - {status}", callback_data=f"ticket_{cid}")] for cid, status in tickets]
         await query.message.reply_text("Your Tickets:", reply_markup=InlineKeyboardMarkup(buttons))
@@ -43,14 +39,9 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         case_id = query.data.split("_")[1]
         c.execute("SELECT problem, status FROM cases WHERE case_id=?", (case_id,))
         row = c.fetchone()
-        if not row:
-            await query.message.reply_text("Ticket not found.")
-            return
-        prob, status = row
-        await query.message.reply_text(f"Case ID: {case_id}\nStatus: {status}\nProblem: {prob}")
-
-    elif query.data == "agent_panel" and user_id in AGENTS:
-        await show_agent_panel(update, context)
+        if row:
+            prob, status = row
+            await query.message.reply_text(f"Case ID: {case_id}\nStatus: {status}\nProblem: {prob}")
 
 async def name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
@@ -60,13 +51,13 @@ async def name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def uid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     context.user_data["uid"] = None if text.lower() == "skip" else text
-    await update.message.reply_text("Enter your email:")
+    await update.message.reply_text("Enter your Email:")
     return EMAIL
 
 async def email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if "@" not in text:
-        await update.message.reply_text("Invalid email, try again:")
+        await update.message.reply_text("Invalid email. Try again:")
         return EMAIL
     context.user_data["email"] = text
     await update.message.reply_text("Describe your problem:")
@@ -88,11 +79,6 @@ async def problem(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"Ticket created! Case ID: {case_id}")
 
-    # Notify agents
-    for agent_id in AGENTS:
-        try:
-            await context.bot.send_message(agent_id, f"New ticket: {case_id} from {name_val}")
-        except:
-            pass
+    await notify_agents(context, case_id, name_val)
 
     return ConversationHandler.END
