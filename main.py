@@ -24,7 +24,7 @@ app.add_handler(CallbackQueryHandler(user_button, pattern="^(my_tickets|ticket_|
 app.add_handler(CallbackQueryHandler(agent_button, pattern="^(case_|transfer_|close)"))
 app.add_handler(CommandHandler("start", start))
 
-# Owner commands
+# Admin commands
 async def add_agent(update, context):
     if update.message.from_user.id != BOT_OWNER_ID:
         await update.message.reply_text("Not authorized")
