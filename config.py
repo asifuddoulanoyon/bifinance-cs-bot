@@ -1,2 +1,2 @@
 BOT_OWNER_ID = 1675295056
-AGENTS = []  # Owner can add agents dynamically later
+AGENTS = [BOT_OWNER_ID]  # Owner is automatically an agent
