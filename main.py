@@ -4,7 +4,7 @@ from telegram.ext import (
     CallbackQueryHandler, ConversationHandler
 )
 from handlers.user import start, user_button, name, uid, email, problem, NAME, UID, EMAIL, PROBLEM
-from handlers.agent import start_agent, agent_message, agent_button
+from handlers.agent import show_agent_panel, agent_button
 from config import BOT_OWNER_ID, AGENTS
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -27,14 +27,12 @@ conv_handler = ConversationHandler(
 app.add_handler(conv_handler)
 
 # User buttons
-app.add_handler(CallbackQueryHandler(user_button, pattern="^(create_ticket|rate_)"))
+app.add_handler(CallbackQueryHandler(user_button, pattern="^(create_ticket|my_tickets|ticket_|agent_panel|rate_)"))
 
-# Agent handlers
-app.add_handler(CommandHandler("agent", start_agent))
-app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION, agent_message))
+# Agent buttons
 app.add_handler(CallbackQueryHandler(agent_button, pattern="^(case_|transfer_|close)"))
 
-# Owner commands
+# Owner agent management
 async def add_agent(update, context):
     if update.message.from_user.id != BOT_OWNER_ID:
         await update.message.reply_text("❌ Only owner can add agents.")
