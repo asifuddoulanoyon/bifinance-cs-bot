@@ -17,10 +17,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append([InlineKeyboardButton("Agent Panel", callback_data="agent_panel")])
     markup = InlineKeyboardMarkup(buttons)
     await update.message.reply_text(
-        "👋 Welcome to Bifinance Customer Support\n"
+        "Welcome to Bifinance Customer Support\n"
         "This is the only official support channel of Bifinance Exchange.\n"
-        "⚠️ Bifinance support will never message you first.\n"
-        "Please answer the following questions to create a support ticket.\n"
         "Use /help for instructions on how to use this bot.",
         reply_markup=markup
     )
@@ -31,23 +29,27 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if query.data == "create_ticket":
-        await query.message.reply_text("Enter your *Name*:", parse_mode="Markdown")
+        await query.message.reply_text("Enter your Name:")
         return NAME
 
     elif query.data == "my_tickets":
         c.execute("SELECT case_id, status FROM cases WHERE user_id=?", (user_id,))
         tickets = c.fetchall()
         if not tickets:
-            await query.message.reply_text("❌ You have no tickets yet.")
+            await query.message.reply_text("You have no tickets yet.")
             return
-        buttons = [[InlineKeyboardButton(f"{c_id} - {status}", callback_data=f"ticket_{c_id}")] for c_id, status in tickets]
-        await query.message.reply_text("📂 Your Tickets:", reply_markup=InlineKeyboardMarkup(buttons))
+        buttons = [[InlineKeyboardButton(f"{cid} - {status}", callback_data=f"ticket_{cid}")] for cid, status in tickets]
+        await query.message.reply_text("Your Tickets:", reply_markup=InlineKeyboardMarkup(buttons))
 
     elif query.data.startswith("ticket_"):
         case_id = query.data.split("_")[1]
         c.execute("SELECT problem, status FROM cases WHERE case_id=?", (case_id,))
-        prob, status = c.fetchone()
-        text = f"📝 {case_id}\nStatus: {status}\nProblem: {prob}"
+        row = c.fetchone()
+        if not row:
+            await query.message.reply_text("Ticket not found.")
+            return
+        prob, status = row
+        text = f"Case ID: {case_id}\nStatus: {status}\nProblem: {prob}"
         if status == "CLOSED":
             keyboard = [[InlineKeyboardButton(str(i), callback_data=f"rate_{case_id}_{i}")] for i in range(1,6)]
             await query.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -63,7 +65,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rating = int(parts[2])
         c.execute("UPDATE cases SET user_rating=? WHERE case_id=?", (rating, case_id))
         conn.commit()
-        await query.message.reply_text(f"Thank you! You rated {rating}⭐")
+        await query.message.reply_text(f"Thank you! You rated {rating}")
         return ConversationHandler.END
 
 async def name(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -100,13 +102,16 @@ async def problem(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     conn.commit()
 
-    await update.message.reply_text(f"✅ Ticket created! Case ID: {case_id}")
+    await update.message.reply_text(f"Ticket created! Case ID: {case_id}")
 
-    # Notify all agents
+    # Notify agents
     for agent_id in AGENTS:
         try:
-            await context.bot.send_message(agent_id, f"📌 New ticket: {case_id}\nUser: {name_val}")
-        except: pass
+            await context.bot.send_message(agent_id, f"New ticket: {case_id} from {name_val}")
+        except:
+            pass
+
+    return ConversationHandler.END        except: pass
 
     return ConversationHandler.END        except: pass
 
