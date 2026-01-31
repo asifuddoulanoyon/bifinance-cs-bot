@@ -1,9 +1,9 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters
-import random
+from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
 from database import c, conn
 from handlers.agent import show_agent_panel
 from config import BOT_OWNER_ID, AGENTS
+import random
 
 NAME, UID, EMAIL, PROBLEM = range(4)
 
@@ -17,9 +17,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in AGENTS:
         buttons.append([InlineKeyboardButton("Agent Panel", callback_data="agent_panel")])
     markup = InlineKeyboardMarkup(buttons)
-    await update.message.reply_text("👋 Welcome! What do you want to do?", reply_markup=markup)
+    await update.message.reply_text(
+        "👋 Welcome to Bifinance Customer Support\n"
+        "This is the only official support channel of Bifinance Exchange.\n"
+        "⚠️ Bifinance support will never message you first.\n"
+        "Please answer the following questions to create a support ticket.\n"
+        "Use /help for instructions on how to use this bot.",
+        reply_markup=markup
+    )
 
-# CallbackQuery handler for user buttons
+# Button callback handler
 async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -27,7 +34,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "create_ticket":
         await query.message.reply_text("Enter your *Name*:", parse_mode="Markdown")
-        return NAME  # Start ConversationHandler here
+        return NAME
 
     elif query.data == "my_tickets":
         c.execute("SELECT case_id, status FROM cases WHERE user_id=?", (user_id,))
@@ -61,7 +68,7 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"Thank you! You rated {rating}⭐")
         return ConversationHandler.END
 
-# ConversationHandler steps
+# Conversation steps
 async def name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
     await update.message.reply_text("Enter your UID (or type skip):")
@@ -98,7 +105,7 @@ async def problem(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"✅ Ticket created! Case ID: {case_id}")
 
-    # Notify agents
+    # Notify all agents
     for agent_id in AGENTS:
         try:
             await context.bot.send_message(agent_id, f"📌 New ticket: {case_id}\nUser: {name_val}")
