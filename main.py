@@ -13,24 +13,27 @@ PORT = int(os.environ.get("PORT", 10000))
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# User conversation
+# ConversationHandler for user ticket creation
 conv_handler = ConversationHandler(
-    entry_points=[CommandHandler("start", start)],
+    entry_points=[CallbackQueryHandler(user_button, pattern="^create_ticket$")],  # ← fixed
     states={
-        NAME: [MessageHandler(filters.TEXT, name)],
-        UID: [MessageHandler(filters.TEXT, uid)],
-        EMAIL: [MessageHandler(filters.TEXT, email)],
+        NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, name)],
+        UID: [MessageHandler(filters.TEXT & ~filters.COMMAND, uid)],
+        EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, email)],
         PROBLEM: [MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION, problem)]
     },
     fallbacks=[]
 )
 app.add_handler(conv_handler)
 
-# CallbackQueryHandlers
-app.add_handler(CallbackQueryHandler(user_button, pattern="^(create_ticket|my_tickets|ticket_|agent_panel|rate_)"))
+# CallbackQueryHandlers for other buttons
+app.add_handler(CallbackQueryHandler(user_button, pattern="^(my_tickets|ticket_|agent_panel|rate_)"))
 app.add_handler(CallbackQueryHandler(agent_button, pattern="^(case_|transfer_|close)"))
 
-# Owner agent management commands
+# Start command
+app.add_handler(CommandHandler("start", start))
+
+# Owner commands
 async def add_agent(update, context):
     if update.message.from_user.id != BOT_OWNER_ID:
         await update.message.reply_text("❌ Only owner can add agents.")
@@ -54,7 +57,7 @@ async def remove_agent(update, context):
 app.add_handler(CommandHandler("addagent", add_agent))
 app.add_handler(CommandHandler("removeagent", remove_agent))
 
-# Run webhook
+# Webhook
 app.run_webhook(
     listen="0.0.0.0",
     port=PORT,
