@@ -3,7 +3,6 @@ import sqlite3
 conn = sqlite3.connect("support.db", check_same_thread=False)
 c = conn.cursor()
 
-# Cases table
 c.execute('''
 CREATE TABLE IF NOT EXISTS cases (
     case_id TEXT PRIMARY KEY,
