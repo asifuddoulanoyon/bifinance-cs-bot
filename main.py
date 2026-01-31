@@ -1,18 +1,13 @@
 import os
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler
 from handlers.user import start, user_button, name, uid, email, problem, NAME, UID, EMAIL, PROBLEM
 from handlers.agent import show_agent_panel, agent_button
-from config import BOT_OWNER_ID, AGENTS
+from config import BOT_OWNER_ID, AGENTS, BOT_TOKEN, WEBHOOK_URL
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 PORT = int(os.environ.get("PORT", 10000))
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# ConversationHandler for user ticket creation (exact Replit flow)
 conv_handler = ConversationHandler(
     entry_points=[CallbackQueryHandler(user_button, pattern="^create_ticket$")],
     states={
@@ -25,11 +20,8 @@ conv_handler = ConversationHandler(
 )
 app.add_handler(conv_handler)
 
-# Buttons for My Tickets, Ticket View, Agent Panel, Rate (exact Replit logic)
 app.add_handler(CallbackQueryHandler(user_button, pattern="^(my_tickets|ticket_|agent_panel|rate_)"))
 app.add_handler(CallbackQueryHandler(agent_button, pattern="^(case_|transfer_|close)"))
-
-# Start command
 app.add_handler(CommandHandler("start", start))
 
 # Owner commands
@@ -56,7 +48,7 @@ async def remove_agent(update, context):
 app.add_handler(CommandHandler("addagent", add_agent))
 app.add_handler(CommandHandler("removeagent", remove_agent))
 
-# Run webhook (Render ready)
+# Run webhook for Render
 app.run_webhook(
     listen="0.0.0.0",
     port=PORT,
