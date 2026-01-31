@@ -7,7 +7,6 @@ import random
 
 NAME, UID, EMAIL, PROBLEM = range(4)
 
-# /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     buttons = [
         [InlineKeyboardButton("Create Ticket", callback_data="create_ticket")],
@@ -26,7 +25,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=markup
     )
 
-# Button callback handler
 async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -63,12 +61,11 @@ async def user_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = query.data.split("_")
         case_id = parts[1]
         rating = int(parts[2])
-        c.execute("UPDATE cases SET rating=? WHERE case_id=?", (rating, case_id))
+        c.execute("UPDATE cases SET user_rating=? WHERE case_id=?", (rating, case_id))
         conn.commit()
         await query.message.reply_text(f"Thank you! You rated {rating}⭐")
         return ConversationHandler.END
 
-# Conversation steps
 async def name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text
     await update.message.reply_text("Enter your UID (or type skip):")
@@ -110,5 +107,7 @@ async def problem(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await context.bot.send_message(agent_id, f"📌 New ticket: {case_id}\nUser: {name_val}")
         except: pass
+
+    return ConversationHandler.END        except: pass
 
     return ConversationHandler.END
