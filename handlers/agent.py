@@ -1,7 +1,8 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from database import c, conn
-from config import BOT_OWNER_ID, AGENTS
+from config import AGENTS
 
+# Show agent panel
 async def show_agent_panel(update, context):
     user_id = update.callback_query.from_user.id if update.callback_query else update.message.from_user.id
     if user_id not in AGENTS:
@@ -14,10 +15,13 @@ async def show_agent_panel(update, context):
     markup = InlineKeyboardMarkup(buttons) if buttons else None
     await (update.message.reply_text("📂 Your Tickets:", reply_markup=markup) if update.message else update.callback_query.message.reply_text("📂 Your Tickets:", reply_markup=markup))
 
+# Handle agent button clicks
 async def agent_button(update, context):
     query = update.callback_query
     await query.answer()
     data = query.data
+    user_id = query.from_user.id
+
     if data.startswith("case_"):
         case_id = data.split("_")[1]
         context.user_data["current_case"] = case_id
@@ -25,15 +29,18 @@ async def agent_button(update, context):
         prob, status = c.fetchone()
         keyboard = [[InlineKeyboardButton("Transfer", callback_data="transfer"), InlineKeyboardButton("Close", callback_data="close")]]
         await query.edit_message_text(f"📝 {case_id}\nStatus: {status}\nProblem: {prob}", reply_markup=InlineKeyboardMarkup(keyboard))
+
     elif data == "transfer":
         keyboard = [[InlineKeyboardButton(str(aid), callback_data=f"transfer_{aid}")] for aid in AGENTS]
         await query.edit_message_text("Select agent to transfer:", reply_markup=InlineKeyboardMarkup(keyboard))
+
     elif data.startswith("transfer_"):
         new_agent = int(data.split("_")[1])
         case_id = context.user_data["current_case"]
         c.execute("UPDATE cases SET assigned_agent=? WHERE case_id=?", (new_agent, case_id))
         conn.commit()
         await query.edit_message_text(f"✅ Ticket {case_id} transferred to agent {new_agent}")
+
     elif data == "close":
         case_id = context.user_data["current_case"]
         c.execute("UPDATE cases SET status='CLOSED' WHERE case_id=?", (case_id,))
