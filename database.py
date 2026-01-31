@@ -3,10 +3,10 @@ import sqlite3
 conn = sqlite3.connect("support.db", check_same_thread=False)
 c = conn.cursor()
 
+# Cases table
 c.execute('''
 CREATE TABLE IF NOT EXISTS cases (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    case_id TEXT,
+    case_id TEXT PRIMARY KEY,
     user_id INTEGER,
     name TEXT,
     uid TEXT,
@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS cases (
     conversation TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    rating INTEGER
+    agent_rating INTEGER,
+    user_rating INTEGER
 )
 ''')
 conn.commit()
