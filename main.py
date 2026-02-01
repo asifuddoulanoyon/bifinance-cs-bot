@@ -30,11 +30,25 @@ telegram_app.add_handler(CommandHandler("removeagent", admin.remove_agent))
 # Flask app for webhook
 app = Flask(__name__)
 
+# ----- WEBHOOK -----
 @app.route(f"/{BOT_TOKEN}", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
     telegram_app.update_queue.put(update)
-    return "ok"  # <-- must stay **inside the function**
+    return "ok"  # <-- This is **inside the function only**
+
+
+# ----- MAIN -----
+if __name__ == "__main__":
+    RAILWAY_URL = "https://bifinance-cs-bot.railway.app"  # ← your Railway public URL
+
+    # Set Telegram webhook
+    telegram_app.bot.set_webhook(f"{RAILWAY_URL}/{BOT_TOKEN}")
+
+    print("🤖 Bot is running on Railway...")
+
+    # Run Flask server
+    app.run(host="0.0.0.0", port=5000)  # <-- NO return here    return "ok"  # <-- must stay **inside the function**
 
 # ----- MAIN -----
 if __name__ == "__main__":
