@@ -34,7 +34,7 @@ def webhook():
     return "ok"
 
 if __name__ == "__main__":
-    RAILWAY_URL = "https://bifinance-cs-bot.up.railway.app"  # Your Railway public URL
+    RAILWAY_URL = "https://bifinance-cs-bot.railway.internal"  # Your Railway public URL
     telegram_app.bot.set_webhook(f"{RAILWAY_URL}/{BOT_TOKEN}")
     print("🤖 Bot running on Railway...")
     app.run(port=5000)def webhook():
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     # Set webhook (replace with your public Railway URL)
-    RAILWAY_URL = "https://bifinance-cs-bot.up.railway.app"  # ← replace with your live Railway URL
+    RAILWAY_URL = "https://bifinance-cs-bot.railway.internal"  # ← replace with your live Railway URL
     telegram_app.bot.set_webhook(f"{RAILWAY_URL}/{BOT_TOKEN}")
 
     print("🤖 Bot is running on Railway...")
