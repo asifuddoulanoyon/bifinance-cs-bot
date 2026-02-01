@@ -15,26 +15,49 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "/start - Create new ticket\n/help - Show this manual\nReply to open ticket - Continue conversation\n/close - Close ticket"
+        "/start - Create new ticket\n/help - Show instructions\nReply to open ticket - Continue conversation\n/close - Close ticket"
     )
 
 async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    text = update.message.text
+    if update.message.text:
+        text = update.message.text
+    else:
+        text = "[MEDIA]"
+
     if user_id not in user_data:
         await update.message.reply_text("⚠️ Use /start to create a new ticket.")
         return
 
-    step = user_data[user_id]["step"]
+    step = user_data[user_id].get("step")
 
-    # Step 1: Name
     if step == 1:
         user_data[user_id]["name"] = text
         user_data[user_id]["step"] = 2
         await update.message.reply_text("2️⃣ Your Bifinance UID? (or type skip)")
         return
-
-    # Step 2: UID
+    if step == 2:
+        user_data[user_id]["uid"] = None if text.lower() == "skip" else text
+        user_data[user_id]["step"] = 3
+        await update.message.reply_text("3️⃣ Your Email address?")
+        return
+    if step == 3:
+        if "@" not in text or "." not in text:
+            await update.message.reply_text("⚠️ Invalid email. Try again.")
+            return
+        user_data[user_id]["email"] = text
+        user_data[user_id]["step"] = 4
+        await update.message.reply_text("4️⃣ Describe your problem:")
+        return
+    if step == 4:
+        name = user_data[user_id]["name"]
+        uid = user_data[user_id]["uid"]
+        email = user_data[user_id]["email"]
+        add_user(user_id, name, uid, email)
+        case_id = create_case(user_id, text)
+        user_data[user_id]["active_case_id"] = case_id
+        user_data[user_id]["step"] = None
+        await update.message.reply_text(f"✅ Ticket created! Case ID: {case_id}")    # Step 2: UID
     if step == 2:
         user_data[user_id]["uid"] = None if text.lower() == "skip" else text
         user_data[user_id]["step"] = 3
