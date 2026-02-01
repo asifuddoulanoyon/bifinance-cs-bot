@@ -1,11 +1,12 @@
 import sqlite3
+from datetime import datetime
 
 conn = sqlite3.connect("support.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# Users table
+# ----------------- Users table -----------------
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS users(
+CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     name TEXT,
     uid TEXT,
@@ -14,17 +15,9 @@ CREATE TABLE IF NOT EXISTS users(
 )
 """)
 
-# Agents table
+# ----------------- Cases table -----------------
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS agents(
-    agent_id INTEGER PRIMARY KEY,
-    name TEXT
-)
-""")
-
-# Cases table
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS cases(
+CREATE TABLE IF NOT EXISTS cases (
     case_id TEXT PRIMARY KEY,
     user_id INTEGER,
     agent_id INTEGER,
@@ -35,4 +28,43 @@ CREATE TABLE IF NOT EXISTS cases(
 )
 """)
 
+# ----------------- Agents table -----------------
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS agents (
+    agent_id INTEGER PRIMARY KEY
+)
+""")
+
+conn.commit()
+
+# ----------------- Helper functions -----------------
+def create_case(user_id, description):
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("SELECT COUNT(*) FROM cases")
+    count = cursor.fetchone()[0] + 1
+    case_id = f"BF-2026-{count:06d}"
+    cursor.execute(
+        "INSERT INTO cases (case_id, user_id, description, status, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+        (case_id, user_id, description, "OPEN", now, now)
+    )
+    cursor.execute("UPDATE users SET active_case_id=? WHERE user_id=?", (case_id, user_id))
+    conn.commit()
+    return case_id
+
+def add_user(user_id, name, uid, email):
+    cursor.execute("INSERT OR IGNORE INTO users (user_id, name, uid, email) VALUES (?,?,?,?)",
+                   (user_id, name, uid, email))
+    conn.commit()
+
+def is_agent(user_id):
+    cursor.execute("SELECT 1 FROM agents WHERE agent_id=?", (user_id,))
+    return cursor.fetchone() is not None
+
+def add_agent(agent_id):
+    cursor.execute("INSERT OR IGNORE INTO agents (agent_id) VALUES (?)", (agent_id,))
+    conn.commit()
+
+def remove_agent(agent_id):
+    cursor.execute("DELETE FROM agents WHERE agent_id=?", (agent_id,))
+    conn.commit()
 conn.commit()
