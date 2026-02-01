@@ -1,7 +1,14 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes
+from database import create_case, get_user_active_case, append_message
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    active_case = get_user_active_case(user_id)
+    if active_case:
+        await update.message.reply_text(f"✅ You already have an active case: {active_case[1]}")
+        return
+
     await update.message.reply_text(
         "👋 Welcome to Bifinance Customer Support\n"
         "This is the only official support channel.\n"
@@ -13,20 +20,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     step = context.user_data.get('step')
+    text = update.message.text
+    user_id = update.effective_user.id
+
     if step == 'name':
-        context.user_data['name'] = update.message.text
+        context.user_data['name'] = text
         context.user_data['step'] = 'uid'
         await update.message.reply_text("Your Bifinance UID (or type skip):")
     elif step == 'uid':
-        context.user_data['uid'] = update.message.text if update.message.text.lower() != 'skip' else ''
+        context.user_data['uid'] = text if text.lower() != 'skip' else ''
         context.user_data['step'] = 'email'
         await update.message.reply_text("Your email:")
     elif step == 'email':
-        context.user_data['email'] = update.message.text
+        context.user_data['email'] = text
         context.user_data['step'] = 'description'
         await update.message.reply_text("Describe your problem (text/photo/video/document):")
     elif step == 'description':
-        context.user_data['description'] = update.message.text
-        # TODO: Save case to database and notify agents
-        await update.message.reply_text("✅ Your case has been submitted. An agent will contact you soon.")
+        context.user_data['description'] = text
+        # Create case
+        case_id = create_case(user_id, context.user_data['name'], context.user_data['uid'], context.user_data['email'], context.user_data['description'])
+        await update.message.reply_text(f"✅ Your case has been submitted. Case ID: {case_id}")
         context.user_data['step'] = None
