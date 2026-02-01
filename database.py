@@ -1,40 +1,42 @@
 import sqlite3
-from config import DB_FILE
-from datetime import datetime
+
+DB_NAME = "support.db"
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
+    # Users
     c.execute('''
-    CREATE TABLE IF NOT EXISTS cases (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        case_id TEXT UNIQUE,
-        user_id INTEGER,
-        name TEXT,
-        uid TEXT,
-        email TEXT,
-        description TEXT,
-        status TEXT,
-        assigned_agent INTEGER,
-        messages TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        user_rating INTEGER,
-        agent_rating INTEGER
-    )
+        CREATE TABLE IF NOT EXISTS users (
+            telegram_id INTEGER PRIMARY KEY,
+            name TEXT,
+            uid TEXT,
+            email TEXT,
+            active_case_id TEXT
+        )
+    ''')
+    # Cases
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS cases (
+            case_id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            description TEXT,
+            status TEXT,
+            assigned_agent INTEGER,
+            history TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    # Agents
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS agents (
+            telegram_id INTEGER PRIMARY KEY,
+            name TEXT
+        )
     ''')
     conn.commit()
-    conn.close()
-
-def create_case(user_id, name, uid, email, description):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    case_id = f"BF-{timestamp}"
-    c.execute('''
-        INSERT INTO cases (case_id, user_id, name, uid, email, description, status, messages)
-        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?)
-    ''', (case_id, user_id, name, uid, email, description))
+    conn.close()    ''', (case_id, user_id, name, uid, email, description))
     conn.commit()
     conn.close()
     return case_id
