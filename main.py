@@ -1,40 +1,42 @@
 import os
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-from config import BOT_TOKEN, OWNER_ID
-from handlers import user, agent, admin
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+)
+import handlers.user as user
+import handlers.agent as agent
+import handlers.admin as admin
 
-PORT = int(os.environ.get("PORT", 3000))  # Railway sets PORT automatically
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🤖 Bifinance Customer Support Bot is online!\nUse /help for instructions."
-    )
+# Load environment variables
+TOKEN = os.getenv("BOT_TOKEN")
+OWNER_ID = int(os.getenv("OWNER_ID"))
 
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    # Create application
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    # Command handlers
-    app.add_handler(CommandHandler("start", start))
-
-    # User handlers
+    # ---------------- Commands ----------------
+    # User commands
+    app.add_handler(CommandHandler("start", user.start))
+    app.add_handler(CommandHandler("help", user.help_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, user.handle_user_message))
 
-    # Agent handlers
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, agent.handle_agent_message))
+    # Agent commands
+    app.add_handler(CommandHandler("cases", agent.show_cases))
+    app.add_handler(CallbackQueryHandler(agent.button_callback))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, agent.handle_agent_reply))
+    app.add_handler(CommandHandler("transfer", agent.transfer_case))
+    app.add_handler(CommandHandler("close", agent.close_case))
 
-    # Admin handlers
+    # Admin commands
     app.add_handler(CommandHandler("addagent", admin.add_agent))
     app.add_handler(CommandHandler("removeagent", admin.remove_agent))
 
-    print("🤖 Bot is running on Railway...")
-    app.run_polling()  # for now, we can switch to webhook later
+    # Start polling
+    print("🤖 Bot is running...")
+    app.run_polling()
 
 if __name__ == "__main__":
-    main()        )
-
-# ---------------- MAIN FUNCTION ----------------
-def main():
+    main()def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     # Handlers
