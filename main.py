@@ -15,7 +15,7 @@ def main():
 
     # User commands
     app.add_handler(CommandHandler("start", user.start))
-    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.Document.ALL, user.handle_message))
+    app.add_handler(MessageHandler(filters.TEXT, user.handle_message))
 
     # Agent commands
     app.add_handler(CommandHandler("cases", agent.list_cases))
@@ -29,12 +29,7 @@ def main():
     app.run_polling()
 
 if __name__ == "__main__":
-    main()    main()def main():
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    # Handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
+    main()    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_username))
 
     print("🤖 Bot is running...")
