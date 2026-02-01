@@ -34,7 +34,20 @@ app = Flask(__name__)
 def webhook():
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
     telegram_app.update_queue.put(update)
-    return "ok"  # <- RETURN stays inside the function
+    return "ok"  # <-- must stay **inside the function**
+
+# ----- MAIN -----
+if __name__ == "__main__":
+    # Your Railway public URL
+    RAILWAY_URL = "https://bifinance-cs-bot.up.railway.app"
+
+    # Set Telegram webhook
+    telegram_app.bot.set_webhook(f"{RAILWAY_URL}/{BOT_TOKEN}")
+
+    print("🤖 Bot running on Railway...")
+
+    # Run Flask app
+    app.run(host="0.0.0.0", port=5000)    return "ok"  # <- RETURN stays inside the function
 
 if __name__ == "__main__":
     # Your public Railway URL
