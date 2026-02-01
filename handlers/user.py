@@ -1,58 +1,42 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes
-from database import create_case, get_user_active_case, append_message, close_case
+import sqlite3
+
+DB_NAME = "support.db"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    active_case = get_user_active_case(user_id)
-    if active_case:
-        await update.message.reply_text(f"✅ You already have an active case: {active_case[1]}")
-        return
-
     await update.message.reply_text(
-        "👋 Welcome to Bifinance Customer Support\n"
-        "This is the only official support channel.\n"
-        "Please answer the questions to create a support ticket.\n"
-        "Use /help for instructions."
+        "👋 Welcome to Bifinance Customer Support!\n"
+        "Use /help for instructions.\n"
+        "Please provide your name to start a ticket."
     )
-    context.user_data['step'] = 'name'
-    await update.message.reply_text("What is your name?")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    step = context.user_data.get('step')
+    telegram_id = update.message.from_user.id
     text = update.message.text
-    user_id = update.effective_user.id
 
-    if step == 'name':
-        context.user_data['name'] = text
-        context.user_data['step'] = 'uid'
-        await update.message.reply_text("Your Bifinance UID (or type skip):")
-    elif step == 'uid':
-        context.user_data['uid'] = text if text.lower() != 'skip' else ''
-        context.user_data['step'] = 'email'
-        await update.message.reply_text("Your email:")
-    elif step == 'email':
-        context.user_data['email'] = text
-        context.user_data['step'] = 'description'
-        await update.message.reply_text("Describe your problem (text/photo/video/document):")
-    elif step == 'description':
-        context.user_data['description'] = text
-        case_id = create_case(user_id, context.user_data['name'], context.user_data['uid'], context.user_data['email'], context.user_data['description'])
-        await update.message.reply_text(f"✅ Your case has been submitted. Case ID: {case_id}")
-        context.user_data['step'] = None        await update.message.reply_text("Describe your problem (text/photo/video/document):")
-    elif step == 'description':
-        context.user_data['description'] = text
-        case_id = create_case(user_id, context.user_data['name'], context.user_data['uid'], context.user_data['email'], context.user_data['description'])
-        await update.message.reply_text(f"✅ Your case has been submitted. Case ID: {case_id}")
-        context.user_data['step'] = None        await update.message.reply_text("Describe your problem (text/photo/video/document):")
-    elif step == 'description':
-        context.user_data['description'] = text
-        case_id = create_case(user_id, context.user_data['name'], context.user_data['uid'], context.user_data['email'], context.user_data['description'])
-        await update.message.reply_text(f"✅ Your case has been submitted. Case ID: {case_id}")
-        context.user_data['step'] = None        await update.message.reply_text("Describe your problem (text/photo/video/document):")
-    elif step == 'description':
-        context.user_data['description'] = text
-        # Create case
-        case_id = create_case(user_id, context.user_data['name'], context.user_data['uid'], context.user_data['email'], context.user_data['description'])
-        await update.message.reply_text(f"✅ Your case has been submitted. Case ID: {case_id}")
-        context.user_data['step'] = None
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT active_case_id FROM users WHERE telegram_id=?", (telegram_id,))
+    row = c.fetchone()
+
+    if not row or not row[0]:
+        # No active case, create new
+        case_id = f"BF-{telegram_id}-{int(update.message.message_id)}"
+        c.execute("INSERT OR REPLACE INTO users (telegram_id, name, active_case_id) VALUES (?, ?, ?)",
+                  (telegram_id, update.message.from_user.full_name, case_id))
+        c.execute("INSERT INTO cases (case_id, user_id, description, status, history) VALUES (?, ?, ?, ?, ?)",
+                  (case_id, telegram_id, text, "OPEN", text))
+        conn.commit()
+        await update.message.reply_text(f"✅ Ticket created. Case ID: {case_id}")
+    else:
+        # Append to active case
+        case_id = row[0]
+        c.execute("SELECT history FROM cases WHERE case_id=?", (case_id,))
+        history = c.fetchone()[0]
+        history += f"\nUser: {text}"
+        c.execute("UPDATE cases SET history=?, updated_at=CURRENT_TIMESTAMP WHERE case_id=?",
+                  (history, case_id))
+        conn.commit()
+        await update.message.reply_text("✅ Your message added to the active case.")
+    conn.close()
