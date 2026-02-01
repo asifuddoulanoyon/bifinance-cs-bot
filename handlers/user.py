@@ -1,4 +1,4 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes
 from database import create_case, get_user_active_case, append_message, close_case
 
@@ -35,6 +35,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['email'] = text
         context.user_data['step'] = 'description'
         await update.message.reply_text("Describe your problem (text/photo/video/document):")
+    elif step == 'description':
+        context.user_data['description'] = text
+        case_id = create_case(user_id, context.user_data['name'], context.user_data['uid'], context.user_data['email'], context.user_data['description'])
+        await update.message.reply_text(f"✅ Your case has been submitted. Case ID: {case_id}")
+        context.user_data['step'] = None        await update.message.reply_text("Describe your problem (text/photo/video/document):")
     elif step == 'description':
         context.user_data['description'] = text
         case_id = create_case(user_id, context.user_data['name'], context.user_data['uid'], context.user_data['email'], context.user_data['description'])
