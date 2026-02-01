@@ -1,40 +1,35 @@
-import os
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters
-)
-import handlers.user as user
-import handlers.agent as agent
-import handlers.admin as admin
+import logging
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from config import BOT_TOKEN
+from database import init_db
+from handlers import user, agent, admin
 
-TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID = int(os.getenv("OWNER_ID"))
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
+)
 
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    init_db()
 
-    # ---- User Handlers ----
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    # User commands
     app.add_handler(CommandHandler("start", user.start))
-    app.add_handler(CommandHandler("help", user.help_command))
-    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.DOCUMENT | filters.ANIMATION, user.handle_user_message))
+    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.Document.ALL, user.handle_message))
 
-    # ---- Agent Handlers ----
-    app.add_handler(CommandHandler("cases", agent.show_cases))
-    app.add_handler(CallbackQueryHandler(agent.button_callback))
-    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.DOCUMENT | filters.ANIMATION, agent.handle_agent_reply))
-    app.add_handler(CommandHandler("transfer", agent.transfer_case))
-    app.add_handler(CommandHandler("close", agent.close_case))
+    # Agent commands
+    app.add_handler(CommandHandler("cases", agent.list_cases))
+    app.add_handler(CommandHandler("reply", agent.reply_case))
 
-    # ---- Admin Handlers ----
+    # Admin commands
     app.add_handler(CommandHandler("addagent", admin.add_agent))
     app.add_handler(CommandHandler("removeagent", admin.remove_agent))
 
-    print("🤖 Bot is running...")
+    print("Bot is running...")
     app.run_polling()
 
 if __name__ == "__main__":
-    main()
-if __name__ == "__main__":
-    main()def main():
+    main()    main()def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     # Handlers
