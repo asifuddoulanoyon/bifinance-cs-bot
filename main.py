@@ -1,40 +1,37 @@
 import os
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    ContextTypes,
-    CommandHandler,
-    MessageHandler,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from config import BOT_TOKEN, OWNER_ID
+from handlers import user, agent, admin
 
-TOKEN = os.getenv("BOT_TOKEN")
+PORT = int(os.environ.get("PORT", 3000))  # Railway sets PORT automatically
 
-# ---------------- START COMMAND ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 Bot is online!\nAdd me to a group and try: ? @username"
+        "🤖 Bifinance Customer Support Bot is online!\nUse /help for instructions."
     )
 
-# ---------------- WELCOME MESSAGE ----------------
-async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Trigger for new chat members
-    if update.message.new_chat_members:
-        for member in update.message.new_chat_members:
-            await update.message.reply_text(
-                f"👋 Welcome {member.mention_html()}!\nEnjoy your stay 🚀",
-                parse_mode="HTML"
-            )
+def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# ---------------- ? @username HANDLER ----------------
-async def check_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Only trigger if message starts with "? @"
-    text = update.message.text
-    if text and text.startswith("? @"):
-        username = text.replace("? @", "").strip()
-        await update.message.reply_text(
-            f"🔍 Checking @{username}...\n\n✅ Status: Not approved yet ❌"
-        )
+    # Command handlers
+    app.add_handler(CommandHandler("start", start))
+
+    # User handlers
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, user.handle_user_message))
+
+    # Agent handlers
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, agent.handle_agent_message))
+
+    # Admin handlers
+    app.add_handler(CommandHandler("addagent", admin.add_agent))
+    app.add_handler(CommandHandler("removeagent", admin.remove_agent))
+
+    print("🤖 Bot is running on Railway...")
+    app.run_polling()  # for now, we can switch to webhook later
+
+if __name__ == "__main__":
+    main()        )
 
 # ---------------- MAIN FUNCTION ----------------
 def main():
