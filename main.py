@@ -1,48 +1,48 @@
 import logging
+import os
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from flask import Flask, request
 from config import BOT_TOKEN
 from database import init_db
 from handlers import user, agent, admin
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
 )
 
-def main():
-    init_db()
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+# Initialize database
+init_db()
 
-    # User
-    app.add_handler(CommandHandler("start", user.start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, user.handle_message))
+# Telegram bot
+telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Agent
-    app.add_handler(CommandHandler("cases", agent.list_cases))
-    app.add_handler(CommandHandler("reply", agent.reply_case))
+# User Handlers
+telegram_app.add_handler(CommandHandler("start", user.start))
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, user.handle_message))
 
-    # Admin
-    app.add_handler(CommandHandler("addagent", admin.add_agent))
-    app.add_handler(CommandHandler("removeagent", admin.remove_agent))
+# Agent Handlers
+telegram_app.add_handler(CommandHandler("cases", agent.list_cases))
+telegram_app.add_handler(CommandHandler("reply", agent.reply_case))
 
-    print("Bot is running...")
-    app.run_polling()
+# Admin Handlers
+telegram_app.add_handler(CommandHandler("addagent", admin.add_agent))
+telegram_app.add_handler(CommandHandler("removeagent", admin.remove_agent))
+
+# Flask app for webhook
+app = Flask(__name__)
+
+@app.route(f"/{BOT_TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    telegram_app.update_queue.put(update)
+    return "ok"
 
 if __name__ == "__main__":
-    main()
-# ---------------- RUN ----------------
-if __name__ == "__main__":
-    main()
-# ---------------- MAIN FUNCTION ----------------
-def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    # Set webhook (replace with your public Railway URL)
+    RAILWAY_URL = "https://bifinance-cs-bot.up.railway.app"  # ← replace with your live Railway URL
+    telegram_app.bot.set_webhook(f"{RAILWAY_URL}/{BOT_TOKEN}")
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_username))
-
-    print("🤖 Bot is running...")
-    app.run_polling()
-
-# ---------------- RUN ----------------
-if __name__ == "__main__":
-    main()
+    print("🤖 Bot is running on Railway...")
+    app.run(port=5000)
