@@ -37,6 +37,16 @@ def webhook():
     return "ok"
 
 if __name__ == "__main__":
+    # Your public Railway URL
+    RAILWAY_URL = "https://bifinance-cs-bot.up.railway.app"
+
+    # Set Telegram webhook
+    telegram_app.bot.set_webhook(f"{RAILWAY_URL}/{BOT_TOKEN}")
+
+    print("🤖 Bot running on Railway...")
+    app.run(host="0.0.0.0", port=5000)    return "ok"
+
+if __name__ == "__main__":
     # Use your public Railway URL here (not internal)
     RAILWAY_URL = "https://bifinance-cs-bot.up.railway.app"
 
