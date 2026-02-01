@@ -8,19 +8,22 @@ from handlers import user, agent, admin
 
 logging.basicConfig(level=logging.INFO)
 
-# Init database
+# Initialize database
 init_db()
 
 # Telegram bot
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# Handlers
+# ----- HANDLERS -----
+# User
 telegram_app.add_handler(CommandHandler("start", user.start))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, user.handle_message))
 
+# Agent
 telegram_app.add_handler(CommandHandler("cases", agent.list_cases))
 telegram_app.add_handler(CommandHandler("reply", agent.reply_case))
 
+# Admin
 telegram_app.add_handler(CommandHandler("addagent", admin.add_agent))
 telegram_app.add_handler(CommandHandler("removeagent", admin.remove_agent))
 
@@ -34,7 +37,15 @@ def webhook():
     return "ok"
 
 if __name__ == "__main__":
-    RAILWAY_URL = "https://bifinance-cs-bot.railway.internal"  # Your Railway public URL
+    # Use your public Railway URL here (not internal)
+    RAILWAY_URL = "https://bifinance-cs-bot.up.railway.app"
+
+    # Set webhook for Telegram
+    telegram_app.bot.set_webhook(f"{RAILWAY_URL}/{BOT_TOKEN}")
+
+    print("🤖 Bot running on Railway...")
+    # Run Flask app
+    app.run(host="0.0.0.0", port=5000)    RAILWAY_URL = "https://bifinance-cs-bot.railway.internal"  # Your Railway public URL
     telegram_app.bot.set_webhook(f"{RAILWAY_URL}/{BOT_TOKEN}")
     print("🤖 Bot running on Railway...")
     app.run(port=5000)def webhook():
