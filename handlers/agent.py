@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from database import get_active_cases_for_agent, assign_case, append_message
 
@@ -8,10 +8,11 @@ async def list_cases(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not cases:
         await update.message.reply_text("📂 No active cases assigned to you.")
         return
-    msg = "📂 Active Cases:\n"
+    buttons = []
     for c in cases:
-        msg += f"{c[1]} | User: {c[2]} | Messages: {len(c[9].splitlines())}\n"
-    await update.message.reply_text(msg)
+        buttons.append([InlineKeyboardButton(f"{c[1]} | User: {c[2]}", callback_data=f"case_{c[1]}")])
+    markup = InlineKeyboardMarkup(buttons)
+    await update.message.reply_text("📂 Your active cases:", reply_markup=markup)
 
 async def reply_case(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 2:
