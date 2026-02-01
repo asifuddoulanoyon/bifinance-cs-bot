@@ -1,24 +1,37 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes
-from database import get_active_cases_for_agent, assign_case, append_message
+import sqlite3
+
+DB_NAME = "support.db"
 
 async def list_cases(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    agent_id = update.effective_user.id
-    cases = get_active_cases_for_agent(agent_id)
-    if not cases:
-        await update.message.reply_text("📂 No active cases assigned to you.")
-        return
-    buttons = []
-    for c in cases:
-        buttons.append([InlineKeyboardButton(f"{c[1]} | User: {c[2]}", callback_data=f"case_{c[1]}")])
-    markup = InlineKeyboardMarkup(buttons)
-    await update.message.reply_text("📂 Your active cases:", reply_markup=markup)
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT case_id, status FROM cases WHERE status IN ('OPEN', 'IN_PROGRESS')")
+    rows = c.fetchall()
+    if not rows:
+        await update.message.reply_text("No active cases.")
+    else:
+        message = "Active Cases:\n" + "\n".join([f"• {r[0]} - {r[1]}" for r in rows])
+        await update.message.reply_text(message)
+    conn.close()
 
 async def reply_case(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 2:
-        await update.message.reply_text("Usage: /reply <case_id> <message>")
+        await update.message.reply_text("Usage: /reply <CASE_ID> <message>")
         return
     case_id = context.args[0]
-    text = " ".join(context.args[1:])
-    append_message(case_id, f"Agent {update.effective_user.first_name}", text)
-    await update.message.reply_text(f"✉️ Reply sent to {case_id}")
+    reply_text = " ".join(context.args[1:])
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT history FROM cases WHERE case_id=?", (case_id,))
+    row = c.fetchone()
+    if not row:
+        await update.message.reply_text("Case not found.")
+    else:
+        history = row[0] + f"\nAgent: {reply_text}"
+        c.execute("UPDATE cases SET history=?, updated_at=CURRENT_TIMESTAMP WHERE case_id=?",
+                  (history, case_id))
+        conn.commit()
+        await update.message.reply_text(f"✅ Replied to {case_id}.")
+    conn.close()
