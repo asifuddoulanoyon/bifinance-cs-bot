@@ -1,40 +1,51 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, CallbackQueryHandler
-from database import cursor, conn
-from datetime import datetime
-import os
-from telegram import Bot
+from telegram.ext import ContextTypes
+from database import is_agent, conn, cursor
 
-bot = Bot(token=os.getenv("BOT_TOKEN"))
+agent_cases = {}
 
-# ----------------- Show active cases to agent -----------------
 async def show_cases(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    agent_id = update.message.from_user.id
-
-    cursor.execute("SELECT case_id, status FROM cases WHERE agent_id=?", (agent_id,))
-    rows = cursor.fetchall()
-
-    if not rows:
-        await update.message.reply_text("⚠️ You have no assigned cases.")
+    user_id = update.message.from_user.id
+    if not is_agent(user_id):
+        await update.message.reply_text("⚠️ You are not an agent.")
         return
+    cursor.execute("SELECT case_id, status FROM cases WHERE agent_id=? OR status='OPEN'", (user_id,))
+    rows = cursor.fetchall()
+    buttons = [[InlineKeyboardButton(f"{r[0]} | {r[1]}", callback_data=r[0])] for r in rows]
+    await update.message.reply_text("📂 Your Cases:", reply_markup=InlineKeyboardMarkup(buttons))
 
-    buttons = [
-        [InlineKeyboardButton(f"{case_id} ({status})", callback_data=f"case_{case_id}")]
-        for case_id, status in rows
-    ]
-    markup = InlineKeyboardMarkup(buttons)
-    await update.message.reply_text("📂 Your active cases:", reply_markup=markup)
-
-
-# ----------------- Handle agent button clicks -----------------
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    agent_id = query.from_user.id
+    case_id = query.data
+    agent_cases[query.from_user.id] = case_id
+    await query.edit_message_text(f"✅ Case selected: {case_id}")
 
-    if query.data.startswith("case_"):
-        case_id = query.data.split("_")[1]
-        cursor.execute("SELECT description, user_id FROM cases WHERE case_id=?", (case_id,))
+async def handle_agent_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if user_id not in agent_cases:
+        return
+    case_id = agent_cases[user_id]
+    if update.message.text:
+        text = update.message.text
+    else:
+        text = "[MEDIA]"
+    cursor.execute("UPDATE cases SET description=? WHERE case_id=?", (text, case_id))
+    conn.commit()
+    await update.message.reply_text(f"✅ Reply sent for {case_id}")
+
+async def transfer_case(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("⚠️ Transfer feature coming soon.")
+
+async def close_case(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if user_id not in agent_cases:
+        await update.message.reply_text("⚠️ No case selected.")
+        return
+    case_id = agent_cases[user_id]
+    cursor.execute("UPDATE cases SET status='CLOSED' WHERE case_id=?", (case_id,))
+    conn.commit()
+    await update.message.reply_text(f"✅ Case {case_id} closed.")        cursor.execute("SELECT description, user_id FROM cases WHERE case_id=?", (case_id,))
         row = cursor.fetchone()
         if not row:
             await query.edit_message_text("⚠️ Case not found.")
