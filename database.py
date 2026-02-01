@@ -1,40 +1,30 @@
 import sqlite3
-from datetime import datetime
+from config import DB_FILE
 
-conn = sqlite3.connect("support.db", check_same_thread=False)
-cursor = conn.cursor()
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS cases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        case_id TEXT UNIQUE,
+        user_id INTEGER,
+        name TEXT,
+        uid TEXT,
+        email TEXT,
+        description TEXT,
+        status TEXT,
+        assigned_agent INTEGER,
+        messages TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    conn.commit()
+    conn.close()
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    name TEXT,
-    uid TEXT,
-    email TEXT,
-    active_case_id TEXT
-)
-""")
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS cases (
-    case_id TEXT PRIMARY KEY,
-    user_id INTEGER,
-    agent_id INTEGER,
-    description TEXT,
-    status TEXT,
-    created_at TEXT,
-    updated_at TEXT
-)
-""")
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS agents (
-    agent_id INTEGER PRIMARY KEY
-)
-""")
-
-conn.commit()
-
-def add_user(user_id, name, uid, email):
+def get_connection():
+    return sqlite3.connect(DB_FILE)def add_user(user_id, name, uid, email):
     cursor.execute("INSERT OR IGNORE INTO users (user_id, name, uid, email) VALUES (?,?,?,?)",
                    (user_id, name, uid, email))
     conn.commit()
